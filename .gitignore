@@ -1,0 +1,24 @@
+# Heavy model files & data (We use Hugging Face for these)
+deployment_artifacts/
+*.joblib
+*.cbm
+*.parquet
+*.xlsx
+multihorizon_models/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# OS Files
+.DS_Store
+Thumbs.db
