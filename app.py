@@ -108,9 +108,9 @@ DISPLAY_NAMES = {
 }
 
 try:
-    COINS = inference.load_artifacts(ART_DIR)
+        COINS = inference.load_artifacts(repo_id="sajia2217/crypto-forecaster-artifacts")
 except Exception as e:
-    st.error(f"Failed to load artifacts from `{ART_DIR}`. Did you run the training script first?\nError: {e}")
+    st.error(f"Failed to load artifacts. Error: {e}")
     st.stop()
 
 # ── HEADER ──────────────────────────────────────────────────
