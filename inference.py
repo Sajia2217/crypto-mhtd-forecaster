@@ -23,18 +23,37 @@ COINS_META = {}
 def safe_keras_name(text):
     return re.sub(r"[^A-Za-z0-9_]+", "_", str(text))
 
-def load_artifacts(repo_id="sajia2217/crypto-forecaster-artifacts"): # <-- CHANGE THIS
+def load_artifacts(repo_id="sajia2217/crypto-forecaster-artifacts"):
     global CONFIG, N_HORIZONS, LOOKBACK, FEATURE_COLS, RETURN_LAGS
     global MOMENTUM_WINDOWS, EXPECTED_INTERVAL, BTC_SIGNALS, DEPLOY_ROOT, COINS_META
 
-    # 1. Download the entire folder from Hugging Face
     print(f"Downloading artifacts from Hugging Face: {repo_id}...")
-    local_dir = snapshot_download(repo_id=repo_id, repo_type="model")
-    
-    # 2. Set the deployment root to the downloaded directory
-    DEPLOY_ROOT = Path(local_dir)
 
-    with open(DEPLOY_ROOT / "config.json") as f:
+    local_dir = snapshot_download(
+        repo_id=repo_id,
+        repo_type="model"
+    )
+
+    repo_root = Path(local_dir)
+
+    # Locate the actual artifacts folder
+    artifact_folder = repo_root / "deployment_artifacts"
+
+    if artifact_folder.is_dir():
+        DEPLOY_ROOT = artifact_folder
+    else:
+        DEPLOY_ROOT = repo_root
+
+    # Check required configuration
+    config_file = DEPLOY_ROOT / "config.json"
+
+    if not config_file.exists():
+        raise FileNotFoundError(
+            f"config.json not found in {DEPLOY_ROOT}. "
+            "Check your Hugging Face repository structure."
+        )
+
+    with open(config_file) as f:
         CONFIG = json.load(f)
 
     N_HORIZONS = CONFIG["N_HORIZONS"]
@@ -42,25 +61,38 @@ def load_artifacts(repo_id="sajia2217/crypto-forecaster-artifacts"): # <-- CHANG
     FEATURE_COLS = CONFIG["FEATURE_COLS"]
     RETURN_LAGS = CONFIG["RETURN_LAGS"]
     MOMENTUM_WINDOWS = CONFIG["MOMENTUM_WINDOWS"]
-    EXPECTED_INTERVAL = pd.Timedelta(minutes=CONFIG["EXPECTED_INTERVAL_MINUTES"])
+    EXPECTED_INTERVAL = pd.Timedelta(
+        minutes=CONFIG["EXPECTED_INTERVAL_MINUTES"]
+    )
 
-    BTC_SIGNALS = pd.read_parquet(DEPLOY_ROOT / "btc_market_signals.parquet")
+    BTC_SIGNALS = pd.read_parquet(
+        DEPLOY_ROOT / "btc_market_signals.parquet"
+    )
     BTC_SIGNALS.index = pd.to_datetime(BTC_SIGNALS.index)
 
     COINS_META = {}
-    # The snapshot_download might place files in a subfolder or directly. 
-    # We iterate through to find the metadata.json files.
+
     for coin_dir in sorted(DEPLOY_ROOT.iterdir()):
         if not coin_dir.is_dir():
             continue
+
         meta_path = coin_dir / "metadata.json"
+
         if not meta_path.exists():
             continue
+
         with open(meta_path) as f:
             meta = json.load(f)
+
         COINS_META[safe_keras_name(meta["coin"])] = meta
-        
+
+    if not COINS_META:
+        raise FileNotFoundError(
+            f"No coin metadata found in {DEPLOY_ROOT}"
+        )
+
     return list(COINS_META.keys())
+
 
 
 # ============================================================
